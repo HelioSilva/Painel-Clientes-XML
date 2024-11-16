@@ -7,4 +7,5 @@ import org.springframework.stereotype.Repository
 @Repository
 interface ClienteRepository : MongoRepository<Cliente, String> {
     // Aqui, você pode adicionar métodos de consulta personalizados, se necessário.
+    fun findByCnpj(cnpj: String): Cliente?
 }
