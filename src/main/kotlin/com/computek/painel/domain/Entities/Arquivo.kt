@@ -1,6 +1,6 @@
 package com.computek.painel.domain.Entities
 
-class Arquivo (
+data class Arquivo (
     val ano: Int,
     val mes: String,
     val enviado: Boolean,

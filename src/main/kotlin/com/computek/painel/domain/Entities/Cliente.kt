@@ -11,8 +11,8 @@ data class Cliente(
     val cnpj: String,
     val telefone: String,
     val email: String,
-    val contador: Contador,
     val software: String,
+    val contador: Contador,
     val tiposArquivo: List<TipoArquivo>,
     val arquivos: List<Arquivo>
 )

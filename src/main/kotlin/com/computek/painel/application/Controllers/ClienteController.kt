@@ -5,11 +5,13 @@ import com.computek.painel.domain.Entities.Arquivo
 import com.computek.painel.domain.Entities.Cliente
 import com.computek.painel.domain.Entities.Contador
 import com.computek.painel.domain.Entities.TipoArquivo
+import com.computek.painel.infrastructure.Repositories.ClienteRepository
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
@@ -17,61 +19,76 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/v1")
 class ClienteController(private val clienteService: ClienteService) {
-//    @GetMapping("")
-//    // apenas um exemplo CREATE
-//    fun cadastroCliente():String {
-//        val novoCliente = Cliente(
-//            cnpj = "00123456000133",
-//            email = "suporte.computek@gmail.com",
-//            razao = "Prologica",
-//            fantasia = "Prologica",
-//            software = "SysPDV",
-//            telefone = "082 32218567",
-//            contador = Contador(
-//                email = "contabilidate@gmail.com",
-//                nome = "Contador 2",
-//                telefone = "082 0000 0000"
-//            ),
-//            tiposArquivo = listOf(
-//                TipoArquivo(
-//                    Nome = "XML"
-//                )
-//            ),
-//            arquivos = listOf(
-//                Arquivo(
-//                    ano = 2024,
-//                    mes = "JAN",
-//                    link = "",
-//                    enviado = false,
-//                    emailEnviado = ""
-//                )
-//            )
-//        );
-//        val clienteSalvo = clienteService.salvar(novoCliente);
-//        return "cliente Salvo"
-//    }
-
 
     @GetMapping("/clientes")
-    fun getClients():  List<Cliente>{
-        return clienteService.listarTodos();
+    fun getClients(): ResponseEntity<List<Cliente>> {
+        return ResponseEntity(clienteService.listarTodos(), HttpStatus.OK)
 
     }
 
     @GetMapping("/cliente/{cnpj}")
-    fun getClienteCNPJ(@PathVariable("cnpj") cnpj: String): ResponseEntity<Cliente> {
+    fun getClientsByCNPJ(@PathVariable("cnpj") cnpj: String): ResponseEntity<Cliente> {
         val cliente = clienteService.listarCNPJ(cnpj)
         return if (cliente != null) {
-            ResponseEntity.ok(cliente)
+            ResponseEntity(cliente,HttpStatus.OK)
         }else{
-            ResponseEntity.notFound().build()
+            ResponseEntity(HttpStatus.NOT_FOUND)
         }
     }
 
     @PostMapping("/cliente")
-    fun cadastrarCliente(@RequestBody novoCliente: Cliente): ResponseEntity<Cliente> {
+    fun createClient(@RequestBody novoCliente: Cliente): ResponseEntity<Cliente> {
         val clienteSalvo = clienteService.salvar(novoCliente)
         return ResponseEntity(clienteSalvo, HttpStatus.CREATED)
+    }
+
+    @PutMapping("/cliente/{cnpj}")
+    fun updateClientByCNPJ(@PathVariable("cnpj") cnpj: String, @RequestBody cliente: Cliente):ResponseEntity<Cliente> {
+
+        val clientExists = clienteService.clienteExiste(cnpj)
+
+        if (clientExists == null) {
+            return ResponseEntity(HttpStatus.NOT_FOUND)
+        }
+
+        val updateContador = clientExists.contador.copy(
+            nome = cliente.contador.nome,
+            email = cliente.contador.email,
+            telefone = cliente.contador.telefone
+        )
+
+
+        val updateTipoArquivo = cliente.tiposArquivo.map { novoTipo ->
+            clientExists.tiposArquivo.find { it.Nome == novoTipo.Nome }?.copy(Nome = novoTipo.Nome) ?: novoTipo
+        }
+
+        val updateArquivo = clientExists.arquivos.map { novoArquivo ->
+            novoArquivo.copy(
+                ano = cliente.arquivos.firstOrNull()?.ano ?: novoArquivo.ano,
+                mes = cliente.arquivos.firstOrNull()?.mes ?: novoArquivo.mes,
+                link = cliente.arquivos.firstOrNull()?.link ?: novoArquivo.link,
+                enviado = cliente.arquivos.firstOrNull()?.enviado ?: novoArquivo.enviado,
+                emailEnviado = cliente.arquivos.firstOrNull()?.emailEnviado ?: novoArquivo.emailEnviado
+            )
+        }
+
+
+
+        val updateClient = clientExists.copy(
+            cnpj = cliente.cnpj,
+            razao = cliente.razao,
+            fantasia = cliente.fantasia,
+            telefone = cliente.telefone,
+            email = cliente.email,
+            software = cliente.software,
+            contador = updateContador,
+            tiposArquivo = updateTipoArquivo,
+            arquivos = updateArquivo
+        )
+
+        clienteService.salvar(updateClient)
+        return ResponseEntity(updateClient, HttpStatus.OK)
+
     }
 
 }
