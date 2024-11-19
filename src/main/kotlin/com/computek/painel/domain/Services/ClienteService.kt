@@ -8,4 +8,5 @@ class ClienteService(private val clienteRepository: ClienteRepository) {
     fun salvar(cliente: Cliente): Cliente = clienteRepository.save(cliente)
     fun listarTodos(): List<Cliente> = clienteRepository.findAll().toList()
     fun listarCNPJ(cnpj: String): Cliente? = clienteRepository.findByCnpj(cnpj)
+    fun clienteExiste(cnpj: String): Cliente? = clienteRepository.findByCnpj(cnpj)
 }
