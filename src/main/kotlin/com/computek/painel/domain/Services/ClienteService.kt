@@ -1,9 +1,7 @@
 package com.computek.painel.domain.Services
 import com.computek.painel.domain.Entities.Cliente
 import com.computek.painel.infrastructure.Repositories.ClienteRepository
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
-import kotlin.streams.toList
 
 @Service
 class ClienteService(private val clienteRepository: ClienteRepository) {
