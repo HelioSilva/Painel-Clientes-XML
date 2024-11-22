@@ -29,6 +29,7 @@ dependencies {
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     implementation(kotlin("stdlib-jdk8"))
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
+	implementation("org.modelmapper:modelmapper:3.1.1")
 }
 
 kotlin {
