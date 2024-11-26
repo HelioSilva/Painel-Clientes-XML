@@ -6,16 +6,11 @@ import com.computek.painel.domain.Entities.Cliente
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.PutMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/v1")
+
 class ClienteController(private val clienteService: ClienteService,
                         private val modelMapper: MapperConfig) {
 
@@ -23,11 +18,13 @@ class ClienteController(private val clienteService: ClienteService,
         return clienteService.listarCNPJ(cnpj);
     }
 
+    @CrossOrigin(origins = ["*"], allowedHeaders = ["*"])
     @GetMapping("/clientes")
     fun getClients(): ResponseEntity<List<Cliente>> {
         return ResponseEntity(clienteService.listarTodos(), HttpStatus.OK)
     }
 
+    @CrossOrigin(origins = ["*"], allowedHeaders = ["*"])
     @GetMapping("/cliente/{cnpj}")
     fun getClientsByCNPJ(@PathVariable("cnpj") cnpj: String): ResponseEntity<Cliente> {
         val cliente = clienteService.listarCNPJ(cnpj);
@@ -38,6 +35,7 @@ class ClienteController(private val clienteService: ClienteService,
         return  ResponseEntity(HttpStatus.NOT_FOUND);
     }
 
+    @CrossOrigin(origins = ["*"], allowedHeaders = ["*"])
     @PostMapping("/cliente")
     fun createClient(@Valid @RequestBody novoCliente: Cliente): ResponseEntity<Cliente> {
         if (ConsultaCliente(novoCliente.cnpj) != null){
@@ -48,6 +46,7 @@ class ClienteController(private val clienteService: ClienteService,
         return ResponseEntity(clienteSalvo, HttpStatus.CREATED)
     }
 
+    @CrossOrigin(origins = ["*"], allowedHeaders = ["*"])
     @PutMapping("/cliente/{cnpj}")
     fun updateClientByCNPJ(@PathVariable("cnpj") cnpj: String, @RequestBody body: Cliente):ResponseEntity<Cliente> {
         val clienteConsultado =  ConsultaCliente(cnpj)
