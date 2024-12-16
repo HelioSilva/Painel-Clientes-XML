@@ -17,5 +17,5 @@ data class Cliente(
     val software: String,
     val contador: Contador?,
     val tiposArquivo: TipoArquivo?,
-    val arquivos: List<Arquivo>?
+    var arquivos:  MutableList<Arquivo>? = null
 )

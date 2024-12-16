@@ -30,6 +30,8 @@ dependencies {
     implementation(kotlin("stdlib-jdk8"))
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	implementation("org.modelmapper:modelmapper:3.1.1")
+	implementation("org.springframework.boot:spring-boot-starter-mail")
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0")
 }
 
 kotlin {
