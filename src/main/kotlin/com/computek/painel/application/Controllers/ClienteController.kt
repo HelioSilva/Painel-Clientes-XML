@@ -4,6 +4,7 @@ import com.computek.painel.application.DTOs.EnvioArquivoFiscalDTO
 import com.computek.painel.domain.Entities.Arquivo
 import com.computek.painel.domain.Services.ClienteService
 import com.computek.painel.domain.Entities.Cliente
+import com.computek.painel.domain.Services.EmailService
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
@@ -26,7 +27,7 @@ import io.swagger.v3.oas.annotations.tags.Tag
 @CrossOrigin(origins = ["*"], allowedHeaders = ["*"])
 @Tag(name = "Clientes", description = "Gerenciamento de clientes")
 class ClienteController(private val clienteService: ClienteService,
-                        private val mailSender: JavaMailSender
+                        private val emailService: EmailService
 ) {
 
     @Value("\${file.upload-dir}")
@@ -181,7 +182,11 @@ class ClienteController(private val clienteService: ClienteService,
                 Equipe de Suporte Computek
             """.trimIndent();
 
-            EnviarEmail(consultaCliente.contador!!.email, assuntoMsg, mensagem,
+            emailService.EnviarEmail(
+                consultaCliente.contador!!.email,
+                consultaCliente.email ,
+                assuntoMsg,
+                mensagem,
                 "$uploadDir/$nomeArquivo.rar"
                 );
 
@@ -197,32 +202,6 @@ class ClienteController(private val clienteService: ClienteService,
         }
     }
 
-    fun EnviarEmail(
-        destinatario: String,
-        assunto: String,
-        msg: String,
-        link: String
-    ){
-        val mimeMessage = mailSender.createMimeMessage()
-        val helper = MimeMessageHelper(mimeMessage, true)
 
-        // Configure o remetente com um e-mail válido
-        helper.setFrom("nfe@computek.tech") // E-mail configurado no Hostinger
-        helper.setTo(destinatario)
-        helper.setSubject(assunto)
-        helper.setText(msg, false)
-
-        if (link != "") {
-            val arquivoAnexo = File(link)
-            if (arquivoAnexo.exists()) {
-                helper.addAttachment(arquivoAnexo.name, arquivoAnexo)
-            } else {
-                throw IllegalArgumentException("Arquivo não encontrado: $link")
-            }
-        }
-
-        // Envia o e-mail
-        mailSender.send(mimeMessage)
-    }
 
 }
