@@ -1,5 +1,6 @@
 package com.computek.painel.application.Controllers
 
+import com.computek.painel.application.DTOs.ApiResponse
 import com.computek.painel.application.DTOs.EnvioArquivoFiscalDTO
 import com.computek.painel.domain.Entities.Arquivo
 import com.computek.painel.domain.Services.ClienteService
@@ -35,8 +36,9 @@ class ClienteController(private val clienteService: ClienteService,
 
 
     @GetMapping("/clientes")
-    fun getClients(): ResponseEntity<List<Cliente>> {
-        return ResponseEntity(clienteService.retornarTodosClientes(), HttpStatus.OK)
+    fun getClients(): ResponseEntity<ApiResponse<List<Cliente>>> {
+        val retorno = clienteService.retornarTodosClientes();
+        return ResponseEntity.status(retorno.status).body(retorno)
     }
 
     @GetMapping("/clientes/{gerado}")
@@ -44,13 +46,15 @@ class ClienteController(private val clienteService: ClienteService,
         @PathVariable("gerado") gerado: Boolean,
         @RequestParam ano: Int,
         @RequestParam mes: String
-    ): List<Cliente> {
+    ): ResponseEntity<ApiResponse<List<Cliente>>> {
+        var retorno: ApiResponse<List<Cliente>>;
         if (gerado) {
-            return clienteService.buscarClientesComArquivos(ano, mes)
+            retorno = clienteService.buscarClientesComArquivos(ano, mes)
         }else {
-            return clienteService.buscarClientesSemArquivos(ano, mes)
+            retorno = clienteService.buscarClientesSemArquivos(ano, mes)
         }
 
+        return ResponseEntity.status(retorno.status).body(retorno)
     }
 
     @GetMapping("/cliente/{cnpj}")
