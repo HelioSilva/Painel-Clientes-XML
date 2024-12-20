@@ -1,8 +1,9 @@
 package com.computek.painel.application.Controllers
 
 import com.computek.painel.application.DTOs.ApiResponse
-import com.computek.painel.application.DTOs.EnvioArquivoFiscalDTO
-import com.computek.painel.domain.Entities.Arquivo
+import com.computek.painel.application.DTOs.ResponseUploadDTO
+import com.computek.painel.application.DTOs.RequestEnvioEmailDTO
+import com.computek.painel.application.DTOs.RequestUploadDTO
 import com.computek.painel.domain.Services.ClienteService
 import com.computek.painel.domain.Entities.Cliente
 import com.computek.painel.domain.Services.EmailService
@@ -13,27 +14,21 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
-import org.springframework.mail.javamail.JavaMailSender
-import org.springframework.mail.javamail.MimeMessageHelper
 import org.springframework.web.bind.annotation.*
-import org.springframework.web.multipart.MultipartFile
-import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
-import java.nio.file.StandardCopyOption
 import io.swagger.v3.oas.annotations.tags.Tag
+import org.springframework.validation.annotation.Validated
 
 @RestController
 @RequestMapping("/v1")
 @CrossOrigin(origins = ["*"], allowedHeaders = ["*"])
 @Tag(name = "Clientes", description = "Gerenciamento de clientes")
-class ClienteController(private val clienteService: ClienteService,
-                        private val emailService: EmailService
-) {
+@Validated
+class ClienteController(private val clienteService: ClienteService) {
 
     @Value("\${file.upload-dir}")
     private lateinit var uploadDir: String
-
 
     @GetMapping("/clientes")
     fun getClients(): ResponseEntity<ApiResponse<List<Cliente>>> {
@@ -53,87 +48,49 @@ class ClienteController(private val clienteService: ClienteService,
         }else {
             retorno = clienteService.buscarClientesSemArquivos(ano, mes)
         }
-
         return ResponseEntity.status(retorno.status).body(retorno)
     }
 
     @GetMapping("/cliente/{cnpj}")
-    fun getClientsByCNPJ(@PathVariable("cnpj") cnpj: String): ResponseEntity<Cliente> {
-        val cliente = clienteService.retornarClientePorCNPJ(cnpj);
-        if (cliente != null) {
-           return ResponseEntity(cliente,HttpStatus.OK)
-        }
-        return  ResponseEntity(HttpStatus.NOT_FOUND);
+    fun getClientsByCNPJ(@PathVariable("cnpj") cnpj: String): ResponseEntity<ApiResponse<Cliente>> {
+        val retorno = clienteService.retornarClientePorCNPJ(cnpj);
+        return ResponseEntity.status(retorno.status).body(retorno);
     }
 
     @PostMapping("/cliente")
-    fun createClient(@Valid @RequestBody novoCliente: Cliente): ResponseEntity<Cliente> {
-        if (clienteService.retornarClientePorCNPJ(novoCliente.cnpj) != null){
-            return  ResponseEntity(HttpStatus.CONFLICT);
-        }
-        val clienteSalvo = clienteService.salvarCliente(novoCliente)
-        return ResponseEntity(clienteSalvo, HttpStatus.CREATED)
+    fun createClient(@Valid @RequestBody novoCliente: Cliente): ResponseEntity<ApiResponse<Cliente>> {
+        val retorno = clienteService.salvarCliente(novoCliente)
+        return ResponseEntity.status(retorno.status).body(retorno);
     }
 
     @PutMapping("/cliente/{cnpj}")
-    fun updateClientByCNPJ(@PathVariable("cnpj") cnpj: String,@Valid  @RequestBody body: Cliente):ResponseEntity<Cliente> {
-        val clienteConsultado =  clienteService.retornarClientePorCNPJ(cnpj)
-        if (clienteConsultado == null){
-            return  ResponseEntity(HttpStatus.NOT_FOUND);
+    fun updateClientByCNPJ(@Valid @PathVariable("cnpj") cnpj: String,@Valid  @RequestBody body: Cliente):ResponseEntity<ApiResponse<Cliente>> {
+        val consultaCliente =  clienteService.consultarCliente(cnpj)
+        if (consultaCliente == null){
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(clienteService.createApiResponse(
+                status = HttpStatus.NOT_FOUND.value(),
+                message = "Cliente não encontrado!"
+            ));
         }
-        val updatedCliente = clienteService.salvarCliente(body)
-        return ResponseEntity(updatedCliente, HttpStatus.OK)
+        val retorno = clienteService.salvarCliente(body)
+        return ResponseEntity.status(retorno.status).body(retorno);
     }
 
-    @PostMapping("/cliente/upload", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
-    fun uploadFile(@RequestParam("file") file: MultipartFile,
-                   @RequestParam("cnpj") cnpj: String,
-                   @RequestParam("mes") mes: String,
-                   @RequestParam("ano") ano: Int,request: HttpServletRequest): ResponseEntity<Map<String, String>> {
-
-        if (file.isEmpty) {
-            return ResponseEntity.badRequest().body(mapOf("error" to "O arquivo não pode estar vazio"))
-        }
-
-        val clienteEncontrado: Cliente? = clienteService.retornarClientePorCNPJ(cnpj);
-
-        if (clienteEncontrado == null) {
-            return ResponseEntity.badRequest().body(mapOf("error" to "O cliente não está na base de dados"))
-        }
-
-        try {
-            // Criar diretório, se não existir
-            val directory = File(uploadDir)
-            if (!directory.exists()) {
-                directory.mkdirs()
-            }
-
-            val nomeArquivo: String = cnpj+'_'+mes+'_'+ano;
-            val extension = file.originalFilename?.substringAfterLast('.', "") ?: ""
-
-            // Salvar arquivo
-            val filePath = Paths.get(uploadDir, nomeArquivo+'.'+extension)
-            file.inputStream.use { inputStream ->
-                Files.copy(inputStream, filePath, StandardCopyOption.REPLACE_EXISTING)
-            }
-
-            // Gerar link para download
-            val downloadUrl = "${request.scheme}://${request.serverName}:${request.serverPort}/v1/cliente/download/${nomeArquivo+'.'+extension}"
-
-            if (clienteEncontrado.arquivos == null) {
-                clienteEncontrado.arquivos = mutableListOf() // Inicializa a lista, se for nula
-            }
-            val arquivo: Arquivo = Arquivo(ano = ano, mes = mes,
-                enviado = false, emailEnviado = "", link = downloadUrl);
-
-            clienteEncontrado.arquivos?.add(arquivo);
-
-            clienteService.salvarCliente(clienteEncontrado);
-
-            return ResponseEntity.ok(mapOf("url" to downloadUrl))
-        } catch (ex: Exception) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(mapOf("error" to "Erro ao salvar o arquivo"))
-        }
+    @PostMapping("/cliente/upload/{idCliente}", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    fun uploadFile(
+                    @Valid
+                    @PathVariable("idCliente") idCliente: String,
+                    @Valid
+                    @ModelAttribute params: RequestUploadDTO,
+                    request: HttpServletRequest): ResponseEntity<ApiResponse<ResponseUploadDTO>> {
+        val responseUpload = clienteService.uploadArquivoCliente(
+            idCliente,
+            params.file,
+            params.mes,
+            params.ano,
+            request
+        )
+        return ResponseEntity.status(responseUpload.status).body(responseUpload);
     }
 
     @GetMapping("/cliente/download/{filename}")
@@ -153,59 +110,10 @@ class ClienteController(private val clienteService: ClienteService,
 
     @PostMapping("/cliente/envio-email/{idCliente}")
     fun EnviarArquivoPorEmail(
+        @Valid
         @PathVariable("idCliente") idCliente: String,
-        @Valid @RequestBody body: EnvioArquivoFiscalDTO): ResponseEntity<Any>{
-        val consultaCliente: Cliente? = clienteService.retornarClientePorId(idCliente);
-        if (consultaCliente == null){
-            return  ResponseEntity(HttpStatus.NOT_FOUND);
-        }
-
-        try {
-            if (consultaCliente.contador?.email == ""){
-                return ResponseEntity.badRequest().body("Contador não possui email cadastrado para envio")
-            }
-
-            val arquivoEncontrado = clienteService.buscarArquivoEspecifico(consultaCliente, body.ano, body.mes);
-            if (arquivoEncontrado == null){
-                return ResponseEntity.badRequest().body("Nenhum arquivo encontrado.")
-            }
-
-            val assuntoMsg = "Arquivos fiscais - " + consultaCliente.razao +
-                    " - " + body.mes + "/" + body.ano.toString();
-
-            val nomeArquivo: String = consultaCliente.cnpj+'_'+body.mes+'_'+body.ano;
-
-            val mensagem = """
-                Bom dia,
-            
-                Segue em anexo os arquivos solicitados.
-                Link: ${arquivoEncontrado.link}
-                    
-                Atenciosamente,
-                
-                Equipe de Suporte Computek
-            """.trimIndent();
-
-            emailService.EnviarEmail(
-                consultaCliente.contador!!.email,
-                consultaCliente.email ,
-                assuntoMsg,
-                mensagem,
-                "$uploadDir/$nomeArquivo.rar"
-                );
-
-            clienteService.atualizarStatusEnviado(
-                consultaCliente,
-                body.ano,
-                body.mes,
-                consultaCliente.contador!!.email
-            );
-            return  ResponseEntity(HttpStatus.OK);
-        } catch (ex: Exception){
-            return  ResponseEntity(HttpStatus.FORBIDDEN);
-        }
+        @Valid @RequestBody body: RequestEnvioEmailDTO): ResponseEntity<ApiResponse<Any>>{
+        val retorno = clienteService.EnviarArquivoNoEmail(idCliente, body);
+        return ResponseEntity.status(retorno.status).body(retorno);
     }
-
-
-
 }
