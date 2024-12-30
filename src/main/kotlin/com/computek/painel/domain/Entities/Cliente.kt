@@ -21,5 +21,6 @@ data class Cliente(
     val contador: Contador?,
     val tiposArquivo: TipoArquivo?,
     @field:Valid
-    var arquivos:  MutableList<Arquivo>? = null
+    var arquivos:  MutableList<Arquivo>? = null,
+    var ativo: Boolean = true
 )

@@ -7,7 +7,7 @@ import org.springframework.data.annotation.Id
 data class Arquivo (
     val ano: Int,
     @field:NotBlank(message = "O campo 'mês' é obrigatório e não pode estar vazio.")
-    val mes: String,
+    var mes: String,
     var enviado: Boolean,
     var emailEnviado: String,
     val link: String

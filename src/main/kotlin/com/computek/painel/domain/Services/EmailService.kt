@@ -16,6 +16,9 @@ class EmailService(private val mailSender: JavaMailSender) {
     @Value("\${spring.mail.username}")
     private lateinit var emailRemetente: String
 
+    @Value("\${file.upload-dir}")
+    private lateinit var uploadDir: String
+
     fun EnviarEmail(
         cliente: Cliente,
         arquivo: Arquivo

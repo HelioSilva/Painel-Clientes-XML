@@ -53,7 +53,7 @@ class ClienteService(private val clienteRepository: ClienteRepository,
         try {
             val savedCliente = clienteRepository.save(cliente);
             return createApiResponse(
-                status = HttpStatus.OK.value(),
+                status = HttpStatus.CREATED.value(),
                 message = "Cliente salvo com sucesso!",
                 data = savedCliente
             )
@@ -192,6 +192,15 @@ class ClienteService(private val clienteRepository: ClienteRepository,
         }
     }
 
+    fun validarArquivosUnicos(mes: String, ano:Int, arquivos: List<Arquivo>?) {
+        val duplicado = arquivos?.find { it.mes == mes && it.ano == ano  }
+        if (duplicado != null) {
+            throw IllegalArgumentException("Não é permitido ter arquivos duplicados com o mesmo ano e mês.")
+        }
+
+    }
+
+
     fun uploadArquivoCliente(
         id: String,
         file: MultipartFile,
@@ -217,6 +226,7 @@ class ClienteService(private val clienteRepository: ClienteRepository,
         }
 
         try {
+            validarArquivosUnicos(mes, ano,  respostaConsultaCliente.arquivos);
             ValidaExistenciaDiretorio();
 
             val nomeArquivo = RetornaNomeArquivo(respostaConsultaCliente.cnpj, mes,ano);
@@ -242,7 +252,7 @@ class ClienteService(private val clienteRepository: ClienteRepository,
             salvarCliente(respostaConsultaCliente);
 
             return createApiResponse(
-                status = HttpStatus.OK.value(),
+                status = HttpStatus.CREATED.value(),
                 message = "Arquivo enviado com sucesso!",
                 data = ResponseUploadDTO(
                     url = downloadUrl
@@ -251,7 +261,48 @@ class ClienteService(private val clienteRepository: ClienteRepository,
         } catch (ex: Exception) {
             return createApiResponse(
                 status = HttpStatus.FORBIDDEN.value(),
-                message = "Erro no envio do arquivo!",
+                message = ex.message!!,
+                data = null
+            )
+        }
+    }
+
+    fun deleteArquivoCliente(
+        id: String,
+        mes: String,
+        ano: Int
+    ): ApiResponse<ResponseUploadDTO>{
+
+        val respostaConsultaCliente = retornarClientePorId(id);
+
+        if (respostaConsultaCliente == null) {
+            return createApiResponse(
+                status = HttpStatus.NOT_FOUND.value(),
+                message = "Cliente não encontrado"
+            )
+        }
+
+        try {
+            // Remover o arquivo correspondente
+            val arquivoRemovido = respostaConsultaCliente.arquivos?.removeIf { it.ano == ano && it.mes == mes } ?: false
+
+            if (arquivoRemovido) {
+                clienteRepository.save(respostaConsultaCliente) // Salva o cliente atualizado no banco de dados
+                return createApiResponse(
+                    status = HttpStatus.OK.value(),
+                    message = "Arquivo deletado com sucesso!"
+                )
+            }
+
+            return createApiResponse(
+                status = HttpStatus.NOT_FOUND.value(),
+                message = "Arquivo não encontrado!"
+            )
+
+        } catch (ex: Exception) {
+            return createApiResponse(
+                status = HttpStatus.FORBIDDEN.value(),
+                message = ex.message!!,
                 data = null
             )
         }
@@ -305,6 +356,33 @@ class ClienteService(private val clienteRepository: ClienteRepository,
             return createApiResponse(
                 status = HttpStatus.FORBIDDEN.value(),
                 message = "Falha no envio do email!"
+            )
+        }
+    }
+
+
+    fun AlternarStatusCliente(idCliente: String):ApiResponse<Any> {
+
+        val consultaCliente = retornarClientePorId(idCliente);
+        if (consultaCliente == null){
+            return createApiResponse(
+                status = HttpStatus.NOT_FOUND.value(),
+                message = "Cliente não encontrado"
+            )
+        }
+
+        try {
+            consultaCliente.ativo = !consultaCliente.ativo;
+            clienteRepository.save(consultaCliente);
+
+            return createApiResponse(
+                status = HttpStatus.OK.value(),
+                message = "Status alterado com sucesso!"
+            )
+        } catch (ex: Exception){
+            return createApiResponse(
+                status = HttpStatus.FORBIDDEN.value(),
+                message = "Status não alterado!"
             )
         }
     }

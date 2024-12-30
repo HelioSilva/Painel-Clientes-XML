@@ -1,9 +1,6 @@
 package com.computek.painel.application.Controllers
 
-import com.computek.painel.application.DTOs.ApiResponse
-import com.computek.painel.application.DTOs.ResponseUploadDTO
-import com.computek.painel.application.DTOs.RequestEnvioEmailDTO
-import com.computek.painel.application.DTOs.RequestUploadDTO
+import com.computek.painel.application.DTOs.*
 import com.computek.painel.domain.Services.ClienteService
 import com.computek.painel.domain.Entities.Cliente
 import com.computek.painel.domain.Services.EmailService
@@ -64,7 +61,8 @@ class ClienteController(private val clienteService: ClienteService) {
     }
 
     @PutMapping("/cliente/{cnpj}")
-    fun updateClientByCNPJ(@Valid @PathVariable("cnpj") cnpj: String,@Valid  @RequestBody body: Cliente):ResponseEntity<ApiResponse<Cliente>> {
+    fun updateClientByCNPJ(@Valid @PathVariable("cnpj") cnpj: String,
+                           @Valid  @RequestBody body: Cliente):ResponseEntity<ApiResponse<Cliente>> {
         val consultaCliente =  clienteService.consultarCliente(cnpj)
         if (consultaCliente == null){
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(clienteService.createApiResponse(
@@ -114,6 +112,30 @@ class ClienteController(private val clienteService: ClienteService) {
         @PathVariable("idCliente") idCliente: String,
         @Valid @RequestBody body: RequestEnvioEmailDTO): ResponseEntity<ApiResponse<Any>>{
         val retorno = clienteService.EnviarArquivoNoEmail(idCliente, body);
+        return ResponseEntity.status(retorno.status).body(retorno);
+    }
+
+    @DeleteMapping("/cliente/arquivo/{idCliente}")
+    fun DeletarArquivo (
+        @PathVariable("idCliente") idCliente: String,
+        @Valid
+        @RequestBody body: RequestDeleteArquivoDTO
+    ):ResponseEntity<ApiResponse<ResponseUploadDTO>>{
+        val retorno = clienteService.deleteArquivoCliente(
+            idCliente,
+            body.mes,
+            body.ano
+        )
+        return ResponseEntity.status(retorno.status).body(retorno);
+    }
+
+    @PostMapping("/cliente/status/{idCliente}")
+    fun AlternarStatus (
+        @PathVariable("idCliente") idCliente: String
+    ):ResponseEntity<ApiResponse<Any>>{
+        val retorno = clienteService.AlternarStatusCliente(
+            idCliente
+        )
         return ResponseEntity.status(retorno.status).body(retorno);
     }
 }
